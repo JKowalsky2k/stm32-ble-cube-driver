@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "rtc.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -26,6 +27,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <stdlib.h>
 #include "uart_message_parser.h"
 #include "security.h"
 /* USER CODE END Includes */
@@ -61,17 +63,15 @@ char uart_msg_security_code[MAX_SECURITY_CODE_LENGTH];
 char uart_msg_command[MAX_COMMAND_LENGTH];
 char uart_msg_data[MAX_DATA_LENGTH];
 
-enum States {SECURITY=0, DISPLAY=1, IDLE=2};
-enum States current_state = SECURITY;
+uint8_t stop = 0;
+
+enum States {SETUP=0, SECURITY=1, DISPLAY=2, IDLE=3};
+enum States current_state = SETUP;
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-
-void stateMachine(void);
-void stateSECURITY(void);
-void stateDISPLAY(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -88,6 +88,11 @@ void stateMachine(void)
 {
 	while(current_state != IDLE) {
 		switch (current_state) {
+			case SETUP:
+			{
+				stateSETUP();
+			}
+			break;
 			case SECURITY:
 			{
 				stateSECURITY();
@@ -102,8 +107,33 @@ void stateMachine(void)
 	}
 }
 
+void stateSETUP(void) {
+	printf("[STATE] SETUP\r\n");
+	while (current_state == SETUP)
+	{
+		if (0 == stop)
+		{
+			set_random_session_security_code(session_security_code, strlen(session_security_code));
+		}
+		else
+		{
+			printf("[INFO] GENERATED SECURITY CODE: %.8s\r\n", session_security_code);
+			current_state = SECURITY;
+		}
+	}
+}
+
 void stateSECURITY(void) {
-	while (current_state == SECURITY) {
+	printf("[STATE] SECURITY\r\n");
+	while (current_state == SECURITY)
+	{
+
+	}
+}
+
+void stateDISPLAY(void) {
+	while (current_state == DISPLAY)
+	{
 
 	}
 }
@@ -140,22 +170,24 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
+  MX_RTC_Init();
   /* USER CODE BEGIN 2 */
   HAL_UART_Receive_IT(&huart1, (uint8_t*)&msg_buffer[msg_buffer_idx++], 1);
+  RTC_TimeTypeDef rtc_time;
+  RTC_DateTypeDef rtc_date;
+  HAL_RTC_GetTime(&hrtc, &rtc_time, RTC_FORMAT_BIN);
+  HAL_RTC_GetDate(&hrtc, &rtc_date, RTC_FORMAT_BIN);
+  srand(rtc_time.SecondFraction*rtc_time.Seconds*rtc_time.SubSeconds);
+  stateMachine();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  srand(time(NULL));
-  printf("strlen: %d\r\n", strlen(session_security_code));
-  set_random_session_security_code(session_security_code, strlen(session_security_code));
-  printf("[INFO] GENERATED SECURITY CODE: %s\r\n", session_security_code);
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-//	printf("> %d\r\n", rand()%16);
   }
   /* USER CODE END 3 */
 }
@@ -177,10 +209,18 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSI;
+  RCC_OscInitStruct.LSEState = RCC_LSE_OFF;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLM = 8;
+  RCC_OscInitStruct.PLL.PLLN = 64;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = 2;
+  RCC_OscInitStruct.PLL.PLLR = 2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -190,9 +230,9 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV4;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
@@ -234,6 +274,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 			}
 			memset(msg_buffer, 0, sizeof(msg_buffer));
 			msg_buffer_idx = 0;
+			stop = 1;
 		}
 		HAL_UART_Receive_IT(&huart1, (uint8_t*)&msg_buffer[msg_buffer_idx++], 1);
 	}
