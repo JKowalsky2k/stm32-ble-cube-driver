@@ -17,8 +17,10 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+#include <security_controller.h>
 #include "main.h"
 #include "rtc.h"
+#include "spi.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -29,7 +31,8 @@
 #include <time.h>
 #include <stdlib.h>
 #include "uart_message_parser.h"
-#include "security.h"
+#include "security_controller.h"
+#include "shift_register_controller.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -40,9 +43,9 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define MAX_MSG_LENGTH 20
-#define MAX_SECURITY_CODE_LENGTH 8
+#define MAX_SECURITY_CODE_LENGTH 2
 #define MAX_COMMAND_LENGTH 2
-#define MAX_DATA_LENGTH 10
+#define MAX_DATA_LENGTH 16
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -57,7 +60,8 @@ uint8_t received_char;
 char msg_buffer[MAX_MSG_LENGTH];
 uint8_t msg_buffer_idx = 0;
 
-char session_security_code[MAX_SECURITY_CODE_LENGTH];
+//char session_security_code[MAX_SECURITY_CODE_LENGTH];
+uint8_t session_security_code[2];
 
 char uart_msg_security_code[MAX_SECURITY_CODE_LENGTH];
 char uart_msg_command[MAX_COMMAND_LENGTH];
@@ -73,7 +77,10 @@ enum States current_state = SETUP;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+void stateMachine(void);
+void stateSETUP(void);
+void stateSECURITY(void);
+void stateDISPLAY(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -113,11 +120,11 @@ void stateSETUP(void) {
 	{
 		if (0 == stop)
 		{
-			set_random_session_security_code(session_security_code, strlen(session_security_code));
+			set_random_session_security_code(session_security_code, 2);
 		}
 		else
 		{
-			printf("[INFO] GENERATED SECURITY CODE: %.8s\r\n", session_security_code);
+			printf("[INFO] GENERATED SECURITY CODE: %d, %d\r\n", session_security_code[0], session_security_code[1]);
 			current_state = SECURITY;
 		}
 	}
@@ -125,13 +132,29 @@ void stateSETUP(void) {
 
 void stateSECURITY(void) {
 	printf("[STATE] SECURITY\r\n");
+//	session_security_code[0] = 65;
+//	session_security_code[1] = 65;
+	set_registers(session_security_code[1], session_security_code[0]);
+    HAL_GPIO_WritePin(LAYER1_GPIO_Port, LAYER1_Pin, SET);
+    HAL_GPIO_WritePin(LAYER2_GPIO_Port, LAYER2_Pin, SET);
 	while (current_state == SECURITY)
 	{
-
+		if (uart_msg_security_code[0] == session_security_code[0] &&
+			uart_msg_security_code[1] == session_security_code[1])
+		{
+			printf("[OK] Correct SESSION SECURITY CODE\r\n");
+			reset_all_registers();
+			current_state = DISPLAY;
+		}
+		else
+		{
+//			printf("[ERROR] Invalid SESSION SECURITY CODE\r\n");
+		}
 	}
 }
 
 void stateDISPLAY(void) {
+	printf("[STATE] DISPLAY\r\n");
 	while (current_state == DISPLAY)
 	{
 
@@ -171,7 +194,9 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
   MX_RTC_Init();
+  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
+  printf("START\r\n");
   HAL_UART_Receive_IT(&huart1, (uint8_t*)&msg_buffer[msg_buffer_idx++], 1);
   RTC_TimeTypeDef rtc_time;
   RTC_DateTypeDef rtc_date;
@@ -183,6 +208,10 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+//  set_registers(240, 170);
+//  HAL_GPIO_WritePin(LAYER1_GPIO_Port, LAYER1_Pin, SET);
+//  HAL_GPIO_WritePin(LAYER2_GPIO_Port, LAYER2_Pin, SET);
+//  reset_all_registers();
   while (1)
   {
     /* USER CODE END WHILE */

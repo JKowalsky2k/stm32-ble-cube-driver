@@ -1,7 +1,7 @@
 #include "uart_message_parser.h"
 
-#define COMMAND_START_IN_UART_MESSAGE 8
-#define DATA_START_IN_UART_MESSAGE 10
+#define COMMAND_START_IN_UART_MESSAGE 2
+#define DATA_START_IN_UART_MESSAGE 4
 
 int set_security_code_from_uart_message(const char * uart_message_buffer,
 										char * destination_buffer,
