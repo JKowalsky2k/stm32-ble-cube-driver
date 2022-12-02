@@ -16,5 +16,8 @@ int set_data_from_uart_message(	const char * uart_message_buffer,
 								char * destination_buffer,
 								size_t destination_buffer_length);
 
+int set_crc_from_uart_message(	const char * uart_message_buffer,
+								char * destination_buffer,
+								size_t destination_buffer_length);
 
 #endif

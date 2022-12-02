@@ -18,3 +18,28 @@ int check_security_code(const char * uart_msg_security_code, const char* session
 	}
 	return 0;
 }
+
+int check_data_crc(	const char * uart_msg_security_code,
+					const char * uart_msg_command,
+					const char * uart_msg_data,
+					const char * uart_msg_crc)
+{
+	uint32_t sum = 0;
+	for (int idx = 0; idx < 2; idx++)
+	{
+		sum += uart_msg_security_code[idx];
+	}
+	for (int idx = 0; idx < 2; idx++)
+	{
+		sum += uart_msg_command[idx];
+	}
+	for (int idx = 0; idx < 10; idx++)
+	{
+		sum += uart_msg_data[idx];
+	}
+	if (sum == atoi(uart_msg_crc))
+	{
+		return 1;
+	}
+	return 0;
+}

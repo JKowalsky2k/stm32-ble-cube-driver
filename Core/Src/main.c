@@ -46,7 +46,8 @@
 #define MAX_MSG_LENGTH 20
 #define MAX_SECURITY_CODE_LENGTH 2
 #define MAX_COMMAND_LENGTH 2
-#define MAX_DATA_LENGTH 16
+#define MAX_DATA_LENGTH 10
+#define MAX_CRC_LENGTH 6
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -67,12 +68,13 @@ uint8_t session_security_code[2];
 char uart_msg_security_code[MAX_SECURITY_CODE_LENGTH];
 char uart_msg_command[MAX_COMMAND_LENGTH];
 char uart_msg_data[MAX_DATA_LENGTH];
+char uart_msg_crc[MAX_CRC_LENGTH];
 
 uint8_t stop = 0;
 uint8_t selected_mode = 0;
 uint32_t ms_sleep_value = 250;
 
-enum States {SETUP=0, SECURITY=1, DISPLAY=2, IDLE=3};
+enum States {SETUP=0, SECURITY=1, DISPLAY=2};
 enum States current_state = SETUP;
 //enum States current_state = SECURITY;
 //enum States current_state = DISPLAY;
@@ -98,7 +100,7 @@ int _write(int file, char *ptr, int len)
 
 void stateMachine(void)
 {
-	while(current_state != IDLE) {
+	while(1) {
 		switch (current_state) {
 			case SETUP:
 			{
@@ -137,8 +139,6 @@ void stateSETUP(void) {
 
 void stateSECURITY(void) {
 	printf("[STATE] SECURITY\r\n");
-//	session_security_code[0] = 1;
-//	session_security_code[1] = 1;
 	set_shift_registers(session_security_code[1], session_security_code[0]);
     HAL_GPIO_WritePin(LAYER1_GPIO_Port, LAYER1_Pin, SET);
 	while (current_state == SECURITY)
@@ -165,6 +165,14 @@ void stateDISPLAY(void) {
 		else if (2 == selected_mode)
 		{
 			effect2(ms_sleep_value);
+		}
+		else if (3 == selected_mode)
+		{
+			effect3(ms_sleep_value);
+		}
+		else if (4 == selected_mode)
+		{
+			effect4(ms_sleep_value);
 		}
 	}
 }
@@ -309,23 +317,40 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 			else
 			{
 				printf("[INFO] uart_msg_data: %s\r\n", uart_msg_data);
+			}
+			if (0 != set_crc_from_uart_message(msg_buffer, uart_msg_crc, sizeof(uart_msg_crc)))
+			{
+				printf("[ERROR] Could not get < uart_mag_crc > from UART message!");
+			}
+			else
+			{
+				printf("[INFO] uart_msg_crc: %s\r\n", uart_msg_crc);
+			}
+
+			if (stop > 1) {
 				if (1 == check_security_code(uart_msg_security_code, session_security_code))
 				{
-					selected_mode = get_mode_from_command(uart_msg_command);
-					if (0 != selected_mode)
+					printf("[OK] Correct SESSION SECURITY CODE\r\n");
+					if (1 == check_data_crc(uart_msg_security_code, uart_msg_command, uart_msg_data, uart_msg_crc))
 					{
-						printf("[INFO] Received command: %d\r\n", selected_mode);
-						ms_sleep_value = atoi(uart_msg_data);
-						if (0 == ms_sleep_value)
+						printf("[OK] Correct CRC\r\n");
+						selected_mode = get_mode_from_command(uart_msg_command);
+						if (0 != selected_mode)
 						{
-							printf("[ERROR] Invalid data (should be integer): %s\r\n", uart_msg_data);
+							printf("[INFO] Received command: %d\r\n", selected_mode);
+							ms_sleep_value = atoi(uart_msg_data);
+							if (0 == ms_sleep_value)
+							{
+								printf("[ERROR] Invalid data (should be integer): %s\r\n", uart_msg_data);
+							}
 						}
 					}
 				}
 			}
+
 			memset(msg_buffer, 0, sizeof(msg_buffer));
 			msg_buffer_idx = 0;
-			stop = 1;
+			stop++;
 		}
 		HAL_UART_Receive_IT(&huart1, (uint8_t*)&msg_buffer[msg_buffer_idx++], 1);
 	}
