@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stddef.h>
 
-//int set_random_session_security_code(char * session_security_code, uint16_t session_security_code_length);
 int set_random_session_security_code(uint8_t * session_security_code, uint16_t session_security_code_length);
+int check_security_code(const char * uart_msg_security_code, const char* session_security_code);
 
 #endif

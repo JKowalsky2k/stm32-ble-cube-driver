@@ -59,12 +59,16 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define LED_Pin GPIO_PIN_5
 #define LED_GPIO_Port GPIOA
-#define LAYER1_Pin GPIO_PIN_10
-#define LAYER1_GPIO_Port GPIOB
-#define LAYER2_Pin GPIO_PIN_8
-#define LAYER2_GPIO_Port GPIOA
+#define LAYER4_Pin GPIO_PIN_10
+#define LAYER4_GPIO_Port GPIOB
+#define LAYER2_Pin GPIO_PIN_7
+#define LAYER2_GPIO_Port GPIOC
+#define LAYER3_Pin GPIO_PIN_8
+#define LAYER3_GPIO_Port GPIOA
 #define SS_Pin GPIO_PIN_5
 #define SS_GPIO_Port GPIOB
+#define LAYER1_Pin GPIO_PIN_6
+#define LAYER1_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
