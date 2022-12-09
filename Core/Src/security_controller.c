@@ -19,25 +19,25 @@ int check_security_code(const char * uart_msg_security_code, const char* session
 	return 0;
 }
 
-int check_data_crc(	const char * uart_msg_security_code,
-					const char * uart_msg_command,
-					const char * uart_msg_data,
-					const char * uart_msg_crc)
+int check_data_crc(const char * uart_msg_crc_input, const char * uart_msg_crc)
 {
-	uint32_t sum = 0;
-	for (int idx = 0; idx < 2; idx++)
-	{
-		sum += uart_msg_security_code[idx];
+	uint8_t *result = md5String(uart_msg_crc_input);
+	char tmp[2];
+	uint8_t idx = 0;
+	char converted_crc[32];
+	for(unsigned int i = 0; i < 16; ++i){
+		sprintf(tmp ,"%02x", result[i]);
+		converted_crc[idx] = tmp[0];
+		converted_crc[idx+1] = tmp[1];
+		idx += 2;
+		printf("%s", tmp);
 	}
-	for (int idx = 0; idx < 2; idx++)
-	{
-		sum += uart_msg_command[idx];
-	}
-	for (int idx = 0; idx < 10; idx++)
-	{
-		sum += uart_msg_data[idx];
-	}
-	if (sum == atoi(uart_msg_crc))
+	if (converted_crc[3] 	== uart_msg_crc[0] &&
+		converted_crc[5] 	== uart_msg_crc[1] &&
+		converted_crc[11] 	== uart_msg_crc[2] &&
+		converted_crc[21] 	== uart_msg_crc[3] &&
+		converted_crc[25] 	== uart_msg_crc[4] &&
+		converted_crc[30] 	== uart_msg_crc[5])
 	{
 		return 1;
 	}

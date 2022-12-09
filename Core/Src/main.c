@@ -31,7 +31,6 @@
 #include <stdlib.h>
 #include "uart_message_parser.h"
 #include "security_controller.h"
-#include "shift_register_controller.h"
 #include "command_controller.h"
 #include "effects_controller.h"
 /* USER CODE END Includes */
@@ -48,6 +47,7 @@
 #define MAX_COMMAND_LENGTH 2
 #define MAX_DATA_LENGTH 10
 #define MAX_CRC_LENGTH 6
+#define MAX_CRC_INPUT_LENGTH 15
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -69,6 +69,7 @@ char uart_msg_security_code[MAX_SECURITY_CODE_LENGTH];
 char uart_msg_command[MAX_COMMAND_LENGTH];
 char uart_msg_data[MAX_DATA_LENGTH];
 char uart_msg_crc[MAX_CRC_LENGTH];
+char uart_msg_crc_input[MAX_CRC_INPUT_LENGTH];
 
 uint8_t stop = 0;
 uint8_t selected_mode = 0;
@@ -294,6 +295,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	{
 		if (msg_buffer_idx > MAX_MSG_LENGTH-1)
 		{
+			if (0 != set_crc_input_from_uart_message(msg_buffer, uart_msg_crc_input, sizeof(uart_msg_crc_input)-sizeof(char)))
+			{
+				printf("[ERROR] Could not get < uart_msg_crc_input > from UART message!");
+			}
+			else
+			{
+				printf("[INFO] uart_msg_crc_input: %s\r\n", uart_msg_crc_input);
+			}
 			if (0 != set_security_code_from_uart_message(msg_buffer, uart_msg_security_code, sizeof(uart_msg_security_code)))
 			{
 				printf("[ERROR] Could not get < uart_msg_security_code > from UART message!");
@@ -331,7 +340,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 				if (1 == check_security_code(uart_msg_security_code, session_security_code))
 				{
 					printf("[OK] Correct SESSION SECURITY CODE\r\n");
-					if (1 == check_data_crc(uart_msg_security_code, uart_msg_command, uart_msg_data, uart_msg_crc))
+					if (1 == check_data_crc(uart_msg_crc_input, uart_msg_crc))
 					{
 						printf("[OK] Correct CRC\r\n");
 						selected_mode = get_mode_from_command(uart_msg_command);

@@ -4,7 +4,11 @@
 #include <string.h>
 #include <stddef.h>
 
-int set_security_code_from_uart_message(	const char * uart_message_buffer,
+int set_crc_input_from_uart_message(const char * uart_message_buffer,
+									   char * destination_buffer,
+									   size_t destination_buffer_length);
+
+int set_security_code_from_uart_message(const char * uart_message_buffer,
 										char * destination_buffer,
 										size_t destination_buffer_length);
 
